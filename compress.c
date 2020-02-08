@@ -1,7 +1,19 @@
-#include "header.h"
 #include "compress.h"
 
-// FUNCOES FILA DE PRIORIDADE
+// ARRAY DE FREQUENCIA
+
+void fill_freq_array(lli* frequence, char input_filename[256])
+{
+    FILE* file = fopen(input_filename, "rb");
+    uchar caracter;
+
+    while (fscanf(file, "%c", &caracter) != EOF)
+    {
+        frequence[caracter] += 1;
+    }
+    fclose(file);
+}
+// FILA DE PRIORIDADE
 
 PRIORITY_QUEUE* create_priority_queue()
 {
@@ -61,19 +73,7 @@ NODE* dequeue(PRIORITY_QUEUE* queue)
     return first_node;
 }
 
-void print_queue(NODE* current)
-{
-    printf("*** QUEUE ***\n\n");
-    while (current != NULL)
-    {
-
-        printf("caracter: %c %lld\n", *((uchar*)(current -> caracter)), current -> priority);
-        current = current->next;
-    }
-    printf("\n");
-}
-
-// FUNCOES NODE 
+// TREE E NODE
 
 NODE* create_node(lli priority, uchar caracter, NODE* left, NODE* right)
 {
@@ -91,22 +91,6 @@ NODE* create_node(lli priority, uchar caracter, NODE* left, NODE* right)
     return new_node;
 }
 
-// FUNCOES ARRAY DE FREQUENCIA
-
-void fill_freq_array(lli* frequence)
-{
-    FILE* file = fopen("meg.mp4", "rb");
-    uchar caracter;
-
-    while (fscanf(file, "%c", &caracter) != EOF)
-    {
-        frequence[caracter] += 1;
-    }
-    fclose(file);
-}
-
-// FUNCOES ARVORE DE HUFFMAN
-
 NODE* create_huff_tree(PRIORITY_QUEUE* queue)
 {
     while (queue -> size > 1)
@@ -122,13 +106,20 @@ NODE* create_huff_tree(PRIORITY_QUEUE* queue)
     return queue -> head;
 }
 
-void print_tree(NODE* current)
+ushort get_size_tree(NODE* tree)
 {
-    if (current == NULL) return;
-
-    printf("caracter: %c freq: %lld\n", *((uchar*) (current -> caracter)), current -> priority);
-    print_tree(current -> left);
-    print_tree(current -> right);
+    if (is_leaf(tree))
+    {
+        if ( *((uchar*) (tree -> caracter)) == '*' || *((uchar*)(tree -> caracter)) == '\\')
+        {
+            return 2;
+        } 
+        else
+        {
+            return 1;
+        }
+    }
+    return 1 + get_size_tree(tree -> left) + get_size_tree(tree -> right);
 }
 
 void get_pre_order_tree(NODE* tree, FILE* file)
@@ -155,7 +146,7 @@ bool is_leaf(NODE* current)
     else return false;
 }
 
-// FUNCOES DE HASH
+// HASH
 
 HASH* create_hash()
 {
@@ -168,30 +159,7 @@ HASH* create_hash()
     return new_hash;
 }
 
-void print_hash(HASH* hash)
-{
-    ushort byte;
-    int size;
-
-    for (int i = 0; i < 256; i++)
-    {
-        if (hash -> array[i] != NULL)
-        {
-            byte = *(ushort*) (hash -> array[i] -> code);
-            size = hash -> array[i] -> size;
-
-            printf("new_code: %u size: %d\n", byte, size);
-        }
-    }
-}
-
 // NOVA CODIFICACAO
-
-bool is_bit_i_set(ushort byte, int i)
-{
-    ushort temp = 1 << i;
-    return temp & byte;
-}
 
 void new_codification(HASH* hash, NODE* tree, int size, ushort byte)
 {
@@ -217,45 +185,13 @@ void new_codification(HASH* hash, NODE* tree, int size, ushort byte)
     new_codification(hash, tree -> right, size + 1, byte);
 }
 
-// CALCULAR LIXO, TAMANHO DA ÁRVORE E MONTAR O CABEÇALHO
-
-void write_header(ushort header, FILE* compact_file)
+bool is_bit_i_set(ushort byte, int i)
 {
-    uchar byte_1 = header >> 8; // pega so o primeiro byte da header(que tem 2 bytes)
-    uchar byte_2 = header; // nao precisa shiftar, como o byte 2 so tem 1 byte, ele pega o segundo byte da header.
-
-    fputc(byte_1, compact_file);
-    fputc(byte_2, compact_file);
+    ushort temp = 1 << i;
+    return temp & byte;
 }
 
-ushort create_file_header(HASH* hash, lli frequence[], NODE* tree, uchar trash, ushort size_tree) 
-{
-    ushort header = 0; // zera os 16 bits (2 bytes): 00000000 00000000
-    header |= trash;  // agora ficou assim: 000000 00000101 (ultimo byte eh o lixo em binario)
-    header <<= 13;   //  para trazer o lixo pras 3 primeiras posicoes do primeiro byte: 10100000 00000000
-    header = header | size_tree;  // inserir o restante da arvore (11 exemplo) nos 2 bits: 1010 0000 0000 1011 (header pronta!)            
-
-    // printf("trash %u\n", trash);
-    // printf("header %u\n", header);
-
-    return header;
-}
-
-ushort get_size_tree(NODE* tree)
-{
-    if (is_leaf(tree))
-    {
-        if ( *((uchar*) (tree -> caracter)) == '*' || *((uchar*)(tree -> caracter)) == '\\')
-        {
-            return 2;
-        } 
-        else
-        {
-            return 1;
-        }
-    }
-    return 1 + get_size_tree(tree -> left) + get_size_tree(tree -> right);
-}
+// LIXO, TAMANHO DA ÁRVORE E CABEÇALHO
 
 uchar get_trash(HASH* hash, lli* frequence) 
 {
@@ -280,13 +216,33 @@ uchar get_trash(HASH* hash, lli* frequence)
     }
 }
 
-// COMPACTAR ARQUIVO TESTE
-
-// executar um caso pequeno para entender a funcao, ela eh facil, so entender com calma :D
-
-void compact_file(FILE* compacted_file, HASH* hash, uchar trash_size)
+ushort create_file_header(HASH* hash, lli frequence[], NODE* tree, uchar trash, ushort size_tree) 
 {
-    FILE* read_file = fopen("meg.mp4", "rb"); // abro e leio o arquivo.
+    ushort header = 0; // zera os 16 bits (2 bytes): 00000000 00000000
+    header |= trash;  // agora ficou assim: 000000 00000101 (ultimo byte eh o lixo em binario)
+    header <<= 13;   //  para trazer o lixo pras 3 primeiras posicoes do primeiro byte: 10100000 00000000
+    header = header | size_tree;  // inserir o restante da arvore (11 exemplo) nos 2 bits: 1010 0000 0000 1011 (header pronta!)            
+
+    // printf("trash %u\n", trash);
+    // printf("header %u\n", header);
+
+    return header;
+}
+
+void write_header(ushort header, FILE* compact_file)
+{
+    uchar byte_1 = header >> 8; // pega so o primeiro byte da header(que tem 2 bytes)
+    uchar byte_2 = header; // nao precisa shiftar, como o byte 2 so tem 1 byte, ele pega o segundo byte da header.
+
+    fputc(byte_1, compact_file);
+    fputc(byte_2, compact_file);
+}
+
+// COMPACTAÇÃO
+
+void compact_file(FILE* compacted_file, char input_filename[256], HASH* hash, uchar trash_size)
+{
+    FILE* read_file = fopen(input_filename, "rb"); // abro e leio o arquivo.
     int size;
     int quant_bits;      // verifica se o byte ja esta completo com 8 bits.
     ushort code;         // salva a codificaçao do caracter lido (salvo na hash).
@@ -326,4 +282,51 @@ void compact_file(FILE* compacted_file, HASH* hash, uchar trash_size)
 
     fprintf(compacted_file, "%c", compress_byte); // printa o ultimo byte no arquivo.
     fclose(read_file);
+}
+
+int compress()
+{
+    char input_filename[256];
+    char output_filename[256];
+
+    printf("\nDigite o nome do arquivo:\n\n");
+
+    scanf("%s", input_filename);
+    
+    strcpy(output_filename, input_filename);
+    strcat(output_filename, ".huff");
+
+    FILE* file = fopen(input_filename, "rb");
+
+    if(file == NULL)
+    {
+        printf("Empty file\n");
+        return 0;
+    }
+                
+    lli frequence[256] = {0};
+    fill_freq_array(frequence, input_filename);
+
+    PRIORITY_QUEUE* queue = create_priority_queue();
+    fill_priority_queue(frequence, queue);
+
+    NODE* tree = create_huff_tree(queue);
+                
+    HASH* hash = create_hash();
+    new_codification(hash, tree, 0, 0); 
+
+    FILE* compacted_file = fopen(output_filename, "wb"); // arquivo de escrita compactado.
+                
+    uchar trash = get_trash(hash, frequence); // trash so ocupa 3 bits, por isso so alocamos 1 byte para guardar o lixo.
+    ushort size_tree = get_size_tree(tree);
+
+    ushort header = create_file_header(hash, frequence, tree, trash, size_tree);
+    write_header(header, compacted_file); // escrever o cabeçalho no arquivo compactado.
+                    
+    get_pre_order_tree(tree, compacted_file);
+    compact_file(compacted_file, input_filename, hash, trash);
+
+    fclose(compacted_file);
+
+    return 1;
 }

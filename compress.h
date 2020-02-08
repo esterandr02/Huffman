@@ -2,7 +2,8 @@
 #define COMPRESS_H
 #include "header.h"
 
-// FUNCOES DE FILA
+/** @param frequence: */
+void fill_freq_array(lli* frequence, char input_filename[256]);
 
 /** @return returns queue */
 PRIORITY_QUEUE* create_priority_queue();
@@ -15,10 +16,7 @@ void fill_priority_queue(lli* frequence, PRIORITY_QUEUE* queue);
 /** @param queue: */
 void enqueue(NODE* new_node, PRIORITY_QUEUE* queue); 
 
-/** @param current: */
-void print_queue(NODE* current);
-
-// FUNCOES NODE
+NODE* dequeue(PRIORITY_QUEUE* queue);
 
 /** @param priority: */
 /** @param caracter: */
@@ -27,22 +25,13 @@ void print_queue(NODE* current);
 /** @return returns */
 NODE* create_node(lli priority, uchar caracter, NODE* left, NODE* right);
 
-// FUNCOES ARRAY DE FREQUENCIA
-
-/** @param frequence: */
-void create_freq_array(lli* frequence);
-
-/** @param frequence: */
-void fill_freq_array(lli* frequence);
-
-// FUNCOES ARVORE DE HUFFMAN
-
 /** @param queue: */
 /** @return returns */
 NODE* create_huff_tree(PRIORITY_QUEUE* queue);
 
-/** @param current: */
-void print_tree(NODE* current);
+/** @param tree: */
+/** @return returns */
+ushort get_size_tree(NODE* tree);
 
 /** @param tree: */
 /** @param file: */
@@ -57,9 +46,6 @@ bool is_leaf(NODE* current);
 /** @return returns new_hash */
 HASH* create_hash();
 
-/** @param hash: */
-void print_hash(HASH* hash);
-
 // FUNCOES NOVA CODIFICACAO
 
 /** @param hash: */
@@ -68,43 +54,25 @@ void print_hash(HASH* hash);
 /** @param byte: */
 void new_codification(HASH* hash, NODE* tree, int size, ushort byte);
 
-/** @param frequency: */
-void create_freq_array(lli* frequence);
-
 /** @param tree: */
 /** @param tree: */
 /** @return returns */
 bool is_bit_i_set(ushort byte, int i);
-
-// CALCULAR LIXO, TAMANHO DA ÁRVORE E MONTAR O CABEÇALHO
-
-ushort create_file_header(HASH* hash, lli frequence[], NODE* tree, uchar trash, ushort size_tree);
-
-void write_header(ushort header, FILE *compact_file);
-
-/** @param tree: */
-/** @return returns */
-ushort get_size_tree(NODE* tree);
 
 /** @param hash: */
 /** @param frequence: */
 /** @return returns */
 uchar get_trash(HASH* hash, lli* frequence);
 
-// COMPACTAR ARQUIVO TESTE
+ushort create_file_header(HASH* hash, lli frequence[], NODE* tree, uchar trash, ushort size_tree);
+
+void write_header(ushort header, FILE *compact_file);
 
 /** @param arq_compact: */
 /** @param hash: */
 /** @param trash_size: */
-void compact_file(FILE* arq_compact, HASH* hash, uchar trash_size);
+void compact_file(FILE* arq_compact, char input_filename[256], HASH* hash, uchar trash_size);
 
-// DESCOMPACTACAO
-
-void descompact(); 
-
-/** @param str: a pointer to the*/
-/** @param i: a pointer to the */
-/** @return returns  */
-NODE* construct_tree(uchar *str, int *i);
+int compress();
 
 #endif
