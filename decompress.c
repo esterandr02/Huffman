@@ -1,12 +1,12 @@
 #include "decompress.h"
 
-NODE* construct_tree(uchar str[], int *i) 
+NODE* construct_tree(uchar pre_order_tree[], int *i) 
 {
-   if (str[*i] != '*') 
-   { // no folha
-        if (str[*i] == '\\') *i += 1;
+   if (pre_order_tree[*i] != '*') 
+   { 
+        if (pre_order_tree[*i] == '\\') *i += 1;
         
-        NODE* leaf = create_node(0, str[*i], NULL, NULL);
+        NODE* leaf = create_node(0, pre_order_tree[*i], NULL, NULL);
         
         return leaf;
    }
@@ -15,10 +15,10 @@ NODE* construct_tree(uchar str[], int *i)
         NODE* tree = create_node(0, '*', NULL, NULL);
 
         *i += 1;
-        tree->left = construct_tree(str, i);
+        tree->left = construct_tree(pre_order_tree, i);
 
         *i += 1;
-        tree->right = construct_tree(str, i);
+        tree->right = construct_tree(pre_order_tree, i);
 
         return tree;
    }
@@ -26,25 +26,22 @@ NODE* construct_tree(uchar str[], int *i)
 
 // FUNCAO DE DESCOMPRESSAO
 
-void descompact(FILE *compacted_file, char output_filename[256], NODE *tree, lli cont_bytes, ushort trash, ushort size_tree) 
+void descompact(FILE *compacted_file, char output_file[50], NODE *tree, lli cont_bytes, ushort trash) 
 {
-    // DESCOMPACTAR
-    fseek(compacted_file, 2 + size_tree, SEEK_SET); // função de percorrer o arquivo a partir de um ponto especifico.
-
     uchar byte = 0;
     int limit = 0;
     NODE* current = tree; 
 
-    printf("%s\n", output_filename);
+    printf("%s\n", output_file);
 
-    FILE* descompacted_file = fopen(output_filename, "wb");
+    FILE* descompacted_file = fopen(output_file, "wb");
 
     for (cont_bytes; cont_bytes > 0; cont_bytes--) 
-    { // conta os bytes percorridos.
+    { 
         fscanf(compacted_file, "%c", &byte);
         
         if (cont_bytes == 1) 
-        { // ultimo byte com o lixo (so verificamos esse byte ate o seu lixo).
+        { 
             limit = trash; 
         }
 
@@ -52,16 +49,16 @@ void descompact(FILE *compacted_file, char output_filename[256], NODE *tree, lli
         {
             if (is_bit_i_set(byte, i)) 
             {
-                current = current -> right; // 1 -> direita (bit setado com 1)
+                current = current -> right; 
             } 
             else 
             {
-                current = current -> left; // 0 -> esquerda (bit setado com 0)
+                current = current -> left; 
             }
             if (is_leaf(current)) 
-            { // folha, hora de printar o caracter no novo arquivo :D.
+            { 
                 fprintf(descompacted_file, "%c", *(uchar*) (current -> caracter));
-                current = tree; // ponteiro pro inicio da arvore.
+                current = tree; 
             }
         }
     }
@@ -70,19 +67,23 @@ void descompact(FILE *compacted_file, char output_filename[256], NODE *tree, lli
 
 int decompress()
 {
-    char input_filename[256];
-    char output_filename[256];
+    char input_file[50];
+    char output_file[50];
+
     printf("\nDigite o nome do arquivo:\n\n");
 
-    scanf("%s", input_filename);
-    int size = strlen(input_filename) - 5; // 5 pelos 5 caracteres do ".huff"
-    int i;
-    for(i = 0; i < size; i++) {
-        output_filename[i] = input_filename[i];
-    }
-    output_filename[i] = '\0';
+    scanf("%s", input_file);
 
-    FILE* file = fopen(input_filename, "rb");
+    int size = strlen(input_file) - 5;
+    int i;
+    
+    for( i = 0; i < size; i++) 
+    {
+        output_file[i] = input_file[i];
+    }
+    output_file[i] = '\0';
+
+    FILE* file = fopen(input_file, "rb");
 
     if(file == NULL)
     {
@@ -90,44 +91,39 @@ int decompress()
         return 0;
     }
 
-    FILE* compacted_file = fopen(input_filename, "rb"); // arquivo de escrita compactada
+    FILE* compacted_file = fopen(input_file, "rb"); 
     
-    uchar byte_1, byte_2;  // retirar os 2 primeiros bytes do cabeçalho para pegar o lixo e tamanho da árvore.
+    uchar byte_1, byte_2;  
     
-    fscanf(compacted_file, "%c", &byte_1); // pego o primeiro byte do arquivo compactado (que contem os 3 bits de lixo).
-    fscanf(compacted_file, "%c", &byte_2); // pego o segundo byte do arquivo compactado (com parte do tamanho da arvore).
+    fscanf(compacted_file, "%c", &byte_1); 
+    fscanf(compacted_file, "%c", &byte_2); 
 
-    // PEGAR O LIXO E O TAMANHO DA ARVORE
+    ushort trash = byte_1 >> 5; 
+    ushort tree_size = byte_1 << 11;   
+    tree_size >>= 3;            
+    tree_size |= byte_2;        
 
-    ushort size_tree = 0;       // zera os 16 bits com o tamanho da arvore.
-    ushort trash = byte_1 >> 5; // elimina os 5 bits do tamanho da arvore.
-    size_tree = byte_1 << 11;   // anda 8 bits pra passar pro byte + a esquerda, +3 pra sumir c os 3 bits de lixo.
-    size_tree >>= 3;            // os 3 bits de lixo voltam zerados.
-    size_tree |= byte_2;        // recebe o restante do tamanho da arvore no 2 byte.
+    uchar pre_order_tree[tree_size];       
 
-    uchar str[size_tree];       // salva a arvore em pre ordem
-
-    // le a arvore em pre ordem no arquivo compacatado.
-
-    for (i = 0; i < size_tree; i++) 
+    for (i = 0; i < tree_size; i++) 
     { 
-        fscanf(compacted_file, "%c", &str[i]);
+        fscanf(compacted_file, "%c", &pre_order_tree[i]);
     }
-    // CONSTRUIR A ARVORE
+    
     i = 0;
-    NODE* tree = construct_tree(str, &i);
+    NODE* tree = construct_tree(pre_order_tree, &i);
 
-    // CONTAR OS BYTES DO ARQUIVO
-
-    lli cont_bytes = 0;
-    uchar byte; // so pra ler e contar os bytes msm
+    lli quant_bytes = 0;
+    uchar byte; 
 
     while (fscanf(compacted_file, "%c", &byte) != EOF) 
     {
-        cont_bytes++;
+        quant_bytes++;
     }
 
-    descompact(compacted_file, output_filename, tree, cont_bytes, trash, size_tree);
+    fseek(compacted_file, 2 + tree_size, SEEK_SET);
+
+    descompact(compacted_file, output_file, tree, quant_bytes, trash);
     fclose(compacted_file);
 
     return 1;

@@ -10,7 +10,7 @@ int main()
 
     while(1)
     {
-        int choice, i;
+        int choice;
         printf("\nEscolha uma opção:\n\n1 >> Compress\n\n2 >> Descompress\n\n3 >> Exit\n\n");
     
         scanf("%d", &choice);
@@ -31,6 +31,5 @@ int main()
         else printf("\nOperação Inválida, tente novamente!\n");
 
     }
-
     return 0;
 }

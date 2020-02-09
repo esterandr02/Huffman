@@ -12,9 +12,9 @@ NODE* create_node(lli priority, uchar caracter, NODE* left, NODE* right);
 
 bool is_leaf(NODE* current);
 
-NODE* construct_tree(uchar *str, int *i); 
+NODE* construct_tree(uchar pre_order_tree[], int *i); 
 
-void descompact(FILE *compacted_file, char output_filename[256], NODE *tree, lli cont_bytes, ushort trash, ushort size_tree);
+void descompact(FILE *compacted_file, char output_filename[256], NODE *tree, lli cont_bytes, ushort trash);
 
 int decompress();
 
